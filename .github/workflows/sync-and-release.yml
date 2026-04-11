@@ -1,0 +1,134 @@
+name: Sync upstream and release
+
+on:
+  schedule:
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+concurrency:
+  group: sync-and-release
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for new upstream release
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          UPSTREAM_TAG=$(gh release view --repo moo-man/AoS-Soulbound-FoundryVTT --json tagName -q .tagName)
+          FORK_TAG=$(gh release view --repo pfizrak/AoS-Soulbound-FoundryVTT --json tagName -q .tagName 2>/dev/null || echo "")
+          echo "upstream=$UPSTREAM_TAG" >> "$GITHUB_OUTPUT"
+          echo "fork=$FORK_TAG" >> "$GITHUB_OUTPUT"
+          if [ "$UPSTREAM_TAG" = "$FORK_TAG" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Already up to date: $FORK_TAG"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "New upstream release: $UPSTREAM_TAG (fork has: $FORK_TAG)"
+          fi
+
+      - name: Checkout fork
+        if: steps.check.outputs.skip == 'false'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
+
+      - name: Reset to upstream tag
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          TAG="${{ steps.check.outputs.upstream }}"
+          git remote add upstream https://github.com/moo-man/AoS-Soulbound-FoundryVTT.git || true
+          git fetch upstream --tags --force
+          git reset --hard "$TAG"
+
+      - name: Apply patches
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          # Rename premiumModules -> moduleRegistry
+          sed -i 's/\bpremiumModules\b/moduleRegistry/g' scripts/system/config.js
+          echo "=== Verify patch ==="
+          grep -n 'moduleRegistry' scripts/system/config.js || { echo "PATCH FAILED"; exit 1; }
+          ! grep -n 'premiumModules' scripts/system/config.js || { echo "premiumModules still present"; exit 1; }
+
+          # Rewrite GitHub URLs to fork
+          sed -i 's|moo-man/AoS-Soulbound-FoundryVTT|pfizrak/AoS-Soulbound-FoundryVTT|g' system.json
+          sed -i 's|moo-man/WarhammerLibrary-FVTT|pfizrak/WarhammerLibrary-FVTT|g' system.json
+
+          # Fix warhammer-lib manifest URL to use releases/latest/download
+          python3 - <<'PYEOF'
+          import json, re
+
+          with open("system.json", "r") as f:
+              data = json.load(f)
+
+          for req in data.get("relationships", {}).get("requires", []):
+              if req.get("id") == "warhammer-lib":
+                  req["manifest"] = "https://github.com/pfizrak/WarhammerLibrary-FVTT/releases/latest/download/module.json"
+                  break
+
+          with open("system.json", "w") as f:
+              json.dump(data, f, indent=2)
+              f.write("\n")
+          PYEOF
+
+          echo "=== system.json after patches ==="
+          cat system.json
+
+      - name: Restore fork workflows
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          mkdir -p .github/workflows
+          curl -sL "https://raw.githubusercontent.com/pfizrak/AoS-Soulbound-FoundryVTT/master/.github/workflows/release.yml" \
+            -o .github/workflows/release.yml
+          curl -sL "https://raw.githubusercontent.com/pfizrak/AoS-Soulbound-FoundryVTT/master/.github/workflows/sync-and-release.yml" \
+            -o .github/workflows/sync-and-release.yml
+
+      - name: Commit, tag, and push
+        if: steps.check.outputs.skip == 'false'
+        run: |
+          TAG="${{ steps.check.outputs.upstream }}"
+          git config user.name "pfizrak"
+          git config user.email "209234886+pfizrak@users.noreply.github.com"
+          git add -A
+          git commit -m "Apply local configuration"
+          git tag -f "$TAG"
+          git push origin master --force
+          git push origin "$TAG" --force
+
+      - name: Trigger release workflow
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.check.outputs.upstream }}"
+          gh workflow run release.yml --repo "${{ github.repository }}" -f tag="$TAG"
+
+      - name: Wait for release
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          echo "Waiting for release workflow to start..."
+          sleep 10
+          RUN_ID=$(gh run list --workflow=release.yml --repo "${{ github.repository }}" --limit=1 --json databaseId -q '.[0].databaseId')
+          echo "Watching run $RUN_ID"
+          gh run watch "$RUN_ID" --repo "${{ github.repository }}" --exit-status
+
+      - name: Copy upstream release notes
+        if: steps.check.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.check.outputs.upstream }}"
+          NOTES=$(gh release view "$TAG" --repo moo-man/AoS-Soulbound-FoundryVTT --json body -q .body 2>/dev/null || echo "")
+          if [ -n "$NOTES" ]; then
+            echo "$NOTES" | gh release edit "$TAG" --repo "${{ github.repository }}" --notes-file -
+          fi
