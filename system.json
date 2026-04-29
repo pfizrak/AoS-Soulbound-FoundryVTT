@@ -4,22 +4,24 @@
   "description": "The first ever tabletop roleplaying game set in <b>Warhammer Age of Sigmar</b>. Take on the role of the Soulbound, explore and roleplay in the Mortal Realms, filled with gods, monsters, daemons, and demigods, and shape its future. ",
   "version": "9.0.0",
   "relationships": {
-    "requires": [{
-      "id": "warhammer-lib",
-      "type": "module",
-      "manifest": "https://raw.githubusercontent.com/moo-man/WarhammerLibrary-FVTT/3.1.0/module.json",
-      "compatibility": {
-        "minimum" : "3.1.0",
-        "verified": "3.1.0"
+    "requires": [
+      {
+        "id": "warhammer-lib",
+        "type": "module",
+        "manifest": "https://github.com/pfizrak/WarhammerLibrary-FVTT/releases/latest/download/module.json",
+        "compatibility": {
+          "minimum": "3.1.0",
+          "verified": "3.1.0"
+        }
       }
-    }]
+    ]
   },
-  "compatibility" : {
-    "minimum" : 14,
-    "verified" : 14,
-    "maximum" : 14    
+  "compatibility": {
+    "minimum": 14,
+    "verified": 14,
+    "maximum": 14
   },
-  "authors" : [
+  "authors": [
     {
       "name": "Moo Man",
       "email": "russellt@cubicle7games.com",
@@ -37,8 +39,12 @@
     }
   ],
   "esmodules": [],
-  "scripts": ["age-of-sigmar-soulbound.js"],
-  "styles": ["age-of-sigmar-soulbound.css"],
+  "scripts": [
+    "age-of-sigmar-soulbound.js"
+  ],
+  "styles": [
+    "age-of-sigmar-soulbound.css"
+  ],
   "packs": [],
   "languages": [
     {
@@ -53,12 +59,16 @@
       "url": "https://user-images.githubusercontent.com/28637157/145496204-852c373e-c785-4354-8f39-cba680b4b0c0.png"
     }
   ],
-  "flags" : {
-    "hotReload": { 
-      "extensions": ["css", "hbs", "json"]
+  "flags": {
+    "hotReload": {
+      "extensions": [
+        "css",
+        "hbs",
+        "json"
+      ]
     }
   },
-  "background" : "/modules/soulbound-core/assets/images/login.webp",
+  "background": "/modules/soulbound-core/assets/images/login.webp",
   "grid": {
     "distance": 5,
     "units": "ft",
@@ -67,9 +77,9 @@
   },
   "primaryTokenAttribute": null,
   "secondaryTokenAttribute": null,
-  "url": "https://github.com/moo-man/AoS-Soulbound-FoundryVTT",
+  "url": "https://github.com/pfizrak/AoS-Soulbound-FoundryVTT",
   "socket": true,
-  "manifest": "https://github.com/moo-man/AoS-Soulbound-FoundryVTT/releases/latest/download/system.json",
-  "download": "https://github.com/moo-man/AoS-Soulbound-FoundryVTT/releases/download/9.0.0/age-of-sigmar-soulbound.zip",
+  "manifest": "https://github.com/pfizrak/AoS-Soulbound-FoundryVTT/releases/latest/download/system.json",
+  "download": "https://github.com/pfizrak/AoS-Soulbound-FoundryVTT/releases/download/9.0.0/age-of-sigmar-soulbound.zip",
   "license": "LICENSE.txt"
 }
