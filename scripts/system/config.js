@@ -289,7 +289,7 @@ AOS.bugReporterConfig = {
 },
 
 
-AOS.premiumModules = {
+AOS.moduleRegistry = {
     "age-of-sigmar-soulbound" : "Age of Sigmar: Soulbound System",
     "soulbound-core" : "Core Rulebook",
     "soulbound-starter-set" : "Starter Set",
